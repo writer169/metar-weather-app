@@ -5,24 +5,25 @@ export async function GET(request) {
   try {
     const res = await fetch(
       `https://aviationweather.gov/api/data/metar?ids=${icao}&format=json`,
-      { next: { revalidate: 0 } } // отключаем кэш
+      { next: { revalidate: 0 } }
     );
 
     if (!res.ok) {
       return new Response(
-        JSON.stringify({ error: "Не удалось получить данные METAR" }),
-        { status: 500, headers: { "Content-Type": "application/json" } }
+        JSON.stringify({ error: `Ошибка при запросе: ${res.status}` }),
+        { status: res.status, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    // API иногда возвращает текст, не строго JSON
     const text = await res.text();
+
+    // Пробуем безопасно распарсить
     let data;
     try {
       data = JSON.parse(text);
     } catch {
       return new Response(
-        JSON.stringify({ error: "Ошибка парсинга METAR" }),
+        JSON.stringify({ error: "Ответ не в формате JSON", raw: text.slice(0, 500) }),
         { status: 500, headers: { "Content-Type": "application/json" } }
       );
     }
@@ -32,7 +33,7 @@ export async function GET(request) {
     });
   } catch (error) {
     return new Response(
-      JSON.stringify({ error: "Ошибка сети или сервера" }),
+      JSON.stringify({ error: "Ошибка сети или сервера", details: error.message }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
